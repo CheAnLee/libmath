@@ -1,0 +1,2 @@
+# libmath
+includes some formulas
