@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "inc/triangle.h"
+#include "inc/common.h"
 
 #define Slope(a, b)		((b.y-a.y)/(b.x-a.x))
 
@@ -21,7 +22,7 @@ double SplitTriangleArea (st_node a, st_node b, st_node c, float vLine) {
 	for (int i=0; i<2; i++) {
 		for (int j=i+1; j<3; j++) {
 			if (nd_map[i].x > nd_map[j].x) {
-				float tmp = nd_map[i].x;
+				int tmp = nd_map[i].x;
 				nd_map[i].x = nd_map[j].x;
 				nd_map[j].x = tmp;
 			}
@@ -59,4 +60,11 @@ double SplitTriangleArea (st_node a, st_node b, st_node c, float vLine) {
 	}
 
 	return ratio;
+}
+
+int isLineHitTriangle (st_node a, st_node b, st_node c, float vLine) {
+	if (vLine >= MIN(MIN(a.x, b.x), c.x) && vLine <= MAX(MAX(a.x, b.x), c.x))
+		return 1;
+
+	return 0;
 }

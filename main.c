@@ -4,9 +4,7 @@
 #include <string.h>
 #include "lib/inc/triangle.h"
 #include "lib/inc/cake.h"
-
-#define MIN(x,y)	((x<y)? x: y)
-#define MAX(x,y)	((x>y)? x: y)
+#include "lib/inc/common.h"
 
 st_cake* read_data (int *t_num) {
 	FILE *fp         = NULL;
@@ -31,17 +29,24 @@ st_cake* read_data (int *t_num) {
 			}
 
 			// patch#, w, h
-			fscanf (fp, "%d %d %d", &(cur_ptr->patch_num), &(cur_ptr->cake_w), &(cur_ptr->cake_h));
+			fscanf (fp, "%d %lf %lf", &(cur_ptr->patch_num), &(cur_ptr->cake_w), &(cur_ptr->cake_h));
 			// p, q, r ,s
-			fscanf (fp, "%d %d %d %d", &(cur_ptr->p), &(cur_ptr->q), &(cur_ptr->r), &(cur_ptr->s));
+			double p, q, r, s;
+			fscanf (fp, "%lf %lf %lf %lf", &p, &q, &r, &s);
 			// [1 .. patch#]: x, y, joy_a, joy_b
 			cur_ptr->patch_att = malloc(sizeof(st_patch_att) * cur_ptr->patch_num);
 			memset (cur_ptr->patch_att, 0, sizeof(st_patch_att) * cur_ptr->patch_num);
 			for (int i=0; i<cur_ptr->patch_num; i++) {
-				fscanf (fp, "%d %d %d %d",	&(cur_ptr->patch_att[i].x),
-											&(cur_ptr->patch_att[i].y),
+				double tmp_x, tmp_y;
+				fscanf (fp, "%lf %lf %lf %lf",	&tmp_x, &tmp_y,
 											&(cur_ptr->patch_att[i].joy_a),
 											&(cur_ptr->patch_att[i].joy_b));
+				cur_ptr->patch_att[i].pos[0].x = tmp_x;
+				cur_ptr->patch_att[i].pos[0].y = tmp_y;
+				cur_ptr->patch_att[i].pos[1].x = tmp_x + p;
+				cur_ptr->patch_att[i].pos[1].y = tmp_y + q;
+				cur_ptr->patch_att[i].pos[2].x = tmp_x + r;
+				cur_ptr->patch_att[i].pos[2].y = tmp_y + s;
 			}
 		}
 		cur_ptr->next = NULL;
@@ -54,13 +59,13 @@ st_cake* read_data (int *t_num) {
 	cur_ptr = ptr;
 	while (cur_ptr) {
 		printf ("[Case #%d]\n", ++cnt);
-		printf ("    cake size(h,w): (%d, %d)\n", cur_ptr->cake_h, cur_ptr->cake_w);
+		printf ("    cake size(h,w): (%f, %f)\n", cur_ptr->cake_h, cur_ptr->cake_w);
 		for (int i=0; i<cur_ptr->patch_num; i++) {
 			st_patch_att *cur_patch = (st_patch_att *)&(cur_ptr->patch_att[i]);
-			printf ("        p_%02d:  (%d, %d)(%d, %d)(%d, %d),  joyment: (%d, %d)\n", i+1, cur_patch->x, cur_patch->y,
-																					cur_patch->x+cur_ptr->p, cur_patch->y+cur_ptr->q,
-																					cur_patch->x+cur_ptr->r, cur_patch->y+cur_ptr->s,
-																					cur_patch->joy_a, cur_patch->joy_b);
+			printf ("        p_%02d:  (%f, %f)(%f, %f)(%f, %f),  joyment: (%f, %f)\n", i+1, cur_patch->pos[0].x, cur_patch->pos[0].y,
+																							cur_patch->pos[1].x, cur_patch->pos[1].y,
+																							cur_patch->pos[2].x, cur_patch->pos[2].y,
+																							cur_patch->joy_a, cur_patch->joy_b);
 		}
 
 		cur_ptr = cur_ptr->next;
@@ -81,27 +86,29 @@ int release_data (void* ptr) {
 	return 0;
 }
 int main (int argc, char ** argv) {
-	st_node     a, b, c;
-	int         joyment[2]   = {-10, 5};
 	int         t_num        = 0;
 	double      min_joy_diff = INFINITY;
+	st_cake     *p_cake      = NULL;
+	st_cake     *cur_cake    = NULL;
 
-	a.x = 1; a.y = 2;
-	b.x = 4; b.y = 1;
-	c.x = 3; c.y = 4;
+	p_cake = read_data(&t_num);
+	cur_cake = p_cake;
 
-	st_cake *p_cake = read_data(&t_num);
-
-	// split the area by a vertical line
-	for (int vLine = MIN(MIN(a.x,b.x),c.x); vLine <= MAX(MAX(a.x,b.x),c.x); vLine++) {
-		float r = SplitTriangleArea (a, b, c, (float)vLine);
-
-		double joy_diff = abs( r*joyment[0] - (1.-r)*joyment[1]);
+	for (int pnum = 0; pnum < cur_cake->patch_num; pnum++) {
+		st_patch_att *cur_patch = &(cur_cake->patch_att[pnum]);
+	
+		// split the area by a vertical line
+		for (int vLine = 1; vLine < cur_cake->cake_w; vLine++) {
+			if (!isLineHitTriangle(cur_patch->pos[0], cur_patch->pos[1], cur_patch->pos[2], (float)vLine))
+				continue;
+			float r = SplitTriangleArea (cur_patch->pos[0], cur_patch->pos[1], cur_patch->pos[2], (float)vLine);
+			double joy_diff = abs(r*cur_patch->joy_a - (1.-r)*cur_patch->joy_b);
 		
-		printf ("vLine: %d, A = %f, B = %f, D = %f\n", vLine, r, 1-r, joy_diff);
-		min_joy_diff = MIN(min_joy_diff, joy_diff);
+			printf ("vLine: %d, A = %f, B = %f, D = %f\n", vLine, r, 1-r, joy_diff);
+			min_joy_diff = MIN(min_joy_diff, joy_diff);
+		}
+		printf ("=> min joy difference: %f\n", min_joy_diff);
 	}
-	printf ("=> min joy difference: %f\n", min_joy_diff);
 
 	release_data(p_cake);
 	return 0;
